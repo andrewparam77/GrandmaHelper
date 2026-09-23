@@ -1,0 +1,11 @@
+<resources>
+    <!-- старое -->
+    <string name="app_name">Помощь</string>
+    <string name="accessibility_desc">Удалённая помощь. Позволяет помощнику нажимать за вас и видеть ваш экран.</string>
+    <string name="notif_channel">Служба помощи</string>
+    <string name="notif_title">Помощь подключена</string>
+    <string name="notif_text">Не закрывайте приложение — помощник на связи</string>
+
+    <!-- grandma -->
+    <string name="grandma_accessibility_desc">Помощник ИИ читает текст на экране, чтобы подсказать, куда нажать.</string>
+</resources>

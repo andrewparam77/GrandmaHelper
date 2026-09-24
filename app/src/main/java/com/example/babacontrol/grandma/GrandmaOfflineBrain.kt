@@ -55,6 +55,28 @@ object GrandmaOfflineBrain {
             return BrainResult.Answer("Сегодня " + weekday + ".")
         }
 
+        // ===================== ЭКСТРЕННЫЕ СЛУЖБЫ =====================
+        // Только по явной команде "вызови/позвони/звони сам/набери"
+        val isEmergencyCommand = q.startsWith("вызови") || q.startsWith("позвони") ||
+                q.startsWith("звони") || q.startsWith("набери") ||
+                q.contains("звони сам") || q.contains("звони сама") ||
+                q.contains("звони сейчас")
+
+        if (isEmergencyCommand) {
+            if (q.contains("скор") || q.contains("103")) {
+                return BrainResult.Answer(GrandmaActions.callAmbulance(context))
+            }
+            if (q.contains("полици") || q.contains("милици") || q.contains("102")) {
+                return BrainResult.Answer(GrandmaActions.callPolice(context))
+            }
+            if (q.contains("пожарн") || q.contains("101")) {
+                return BrainResult.Answer(GrandmaActions.callFire(context))
+            }
+            if (q.contains("112") || q.contains("спасен") || q.contains("спасател")) {
+                return BrainResult.Answer(GrandmaActions.callEmergency112(context))
+            }
+        }
+
         // ===================== МАТЕМАТИКА =====================
         calculateExpression(q)?.let { return BrainResult.Answer(it) }
 
@@ -159,7 +181,10 @@ object GrandmaOfflineBrain {
             return BrainResult.Answer(GrandmaActions.openSettings(context))
         }
 
-        // ===================== ЗАГОТОВКИ БЫТОВЫХ ВОПРОСОВ =====================
+        // ===================== БОЛЬШАЯ БАЗА ЗНАНИЙ =====================
+        GrandmaBigBase.findAnswer(q)?.let { return BrainResult.Answer(it) }
+
+        // ===================== СТАРЫЕ ЗАГОТОВКИ =====================
         quickFact(q)?.let { return BrainResult.Answer(it) }
 
         // ===================== ПОГОДА / НОВОСТИ =====================

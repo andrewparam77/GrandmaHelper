@@ -9,7 +9,14 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
-import android.widget.*
+import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.Spinner
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.babacontrol.Prefs
@@ -32,40 +39,49 @@ class GrandmaActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
-        val hasOverlay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-            Settings.canDrawOverlays(this) else true
-        val hasA11y = GrandmaScreenReader.isRunning()
-        val hasMic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                == PackageManager.PERMISSION_GRANTED
-        val hasNotif = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                == PackageManager.PERMISSION_GRANTED
-        else true
+        val hasOverlay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Settings.canDrawOverlays(this)
+        } else {
+            true
+        }
 
-        statusOverlay.text = (if (hasOverlay) "✅ " else "❌ ") + "1. Поверх других приложений"
-        statusA11y.text = (if (hasA11y) "✅ " else "❌ ") + "2. Чтение экрана (Accessibility)"
-        statusMic.text = (if (hasMic) "✅ " else "❌ ") + "3. Микрофон"
-        statusNotif.text = (if (hasNotif) "✅ " else "❌ ") + "4. Уведомления"
+        val hasA11y = GrandmaScreenReader.isRunning()
+
+        val hasMic = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val hasNotif = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        statusOverlay.text = (if (hasOverlay) "[+] " else "[-] ") + "1. Поверх других приложений"
+        statusA11y.text = (if (hasA11y) "[+] " else "[-] ") + "2. Чтение экрана (Accessibility)"
+        statusMic.text = (if (hasMic) "[+] " else "[-] ") + "3. Микрофон"
+        statusNotif.text = (if (hasNotif) "[+] " else "[-] ") + "4. Уведомления"
     }
 
     private fun buildUi() {
-        val ll = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(40), dp(20), dp(20))
-        }
+        val ll = LinearLayout(this)
+        ll.orientation = LinearLayout.VERTICAL
+        ll.setPadding(dp(20), dp(40), dp(20), dp(20))
 
-        ll.addView(TextView(this).apply {
-            text = "🟣 Помощник ИИ для бабушки"
-            textSize = 22f
-            gravity = Gravity.CENTER
-        })
+        val title = TextView(this)
+        title.text = "Помощник ИИ для бабушки"
+        title.textSize = 22f
+        title.gravity = Gravity.CENTER
+        ll.addView(title)
 
-        ll.addView(TextView(this).apply {
-            text = "Включите 4 пункта ниже, чтобы помощник работал.\n" +
-                    "После этого фиолетовая лампочка 💡 появится поверх всех приложений."
-            textSize = 14f
-            setPadding(0, dp(16), 0, dp(20))
-        })
+        val hint = TextView(this)
+        hint.text = "Включите 4 пункта ниже, чтобы помощник работал.\n" +
+                "После этого фиолетовая лампочка появится поверх всех приложений."
+        hint.textSize = 14f
+        hint.setPadding(0, dp(16), 0, dp(20))
+        ll.addView(hint)
 
         statusOverlay = makeStatus()
         statusA11y = makeStatus()
@@ -75,10 +91,11 @@ class GrandmaActivity : AppCompatActivity() {
         ll.addView(statusOverlay)
         ll.addView(makeButton("Включить «поверх приложений»") {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                startActivity(Intent(
+                val i = Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName")
-                ))
+                    Uri.parse("package:" + packageName)
+                )
+                startActivity(i)
             }
         })
 
@@ -103,13 +120,14 @@ class GrandmaActivity : AppCompatActivity() {
 
         ll.addView(space(20))
 
-        ll.addView(makePrimaryButton("🟣 Включить помощника поверх экрана") {
+        ll.addView(makePrimaryButton("Включить помощника поверх экрана") {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
                 Toast.makeText(this, "Сначала разрешите пункт 1", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(
+                val i = Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName")
-                ))
+                    Uri.parse("package:" + packageName)
+                )
+                startActivity(i)
             } else {
                 GrandmaOverlay.start(this)
                 Toast.makeText(this, "Помощник включён", Toast.LENGTH_SHORT).show()
@@ -122,26 +140,29 @@ class GrandmaActivity : AppCompatActivity() {
         })
 
         ll.addView(space(20))
-        ll.addView(View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 1
-            )
-            setBackgroundColor(0xFFDDDDDD.toInt())
-        })
+
+        val divider = View(this)
+        divider.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 1
+        )
+        divider.setBackgroundColor(0xFFDDDDDD.toInt())
+        ll.addView(divider)
+
         ll.addView(space(20))
 
-        ll.addView(makeButton("⚙️ Настройки (ключ, имя бабушки)") {
+        ll.addView(makeButton("Настройки (ключ, имя бабушки)") {
             showSettingsDialog()
         })
 
-        setContentView(ScrollView(this).apply { addView(ll) })
+        val scroll = ScrollView(this)
+        scroll.addView(ll)
+        setContentView(scroll)
     }
 
     private fun showSettingsDialog() {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-        }
+        val container = LinearLayout(this)
+        container.orientation = LinearLayout.VERTICAL
+        container.setPadding(dp(16), dp(16), dp(16), dp(16))
 
         val providers = listOf(
             "gemini" to "Google Gemini",
@@ -151,48 +172,58 @@ class GrandmaActivity : AppCompatActivity() {
             "none" to "Без интернета"
         )
         val currentProvider = Prefs.getProvider(this)
-        var selectedProvider = currentProvider
 
-        val providerSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(
-                this@GrandmaActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                providers.map { it.second }
-            )
-            setSelection(providers.indexOfFirst { it.first == currentProvider }
-                .coerceAtLeast(0))
+        val providerSpinner = Spinner(this)
+        val labels = mutableListOf<String>()
+        for (p in providers) {
+            labels.add(p.second)
         }
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            labels
+        )
+        providerSpinner.adapter = adapter
 
-        val geminiKey = EditText(this).apply {
-            hint = "Ключ Gemini (AIza...)"
-            setText(Prefs.getKey(this@GrandmaActivity, "gemini"))
+        var initialIndex = 0
+        for (i in providers.indices) {
+            if (providers[i].first == currentProvider) {
+                initialIndex = i
+            }
         }
-        val deepseekKey = EditText(this).apply {
-            hint = "Ключ DeepSeek (sk-...)"
-            setText(Prefs.getKey(this@GrandmaActivity, "deepseek"))
-        }
-        val claudeKey = EditText(this).apply {
-            hint = "Ключ Claude (sk-ant-...)"
-            setText(Prefs.getKey(this@GrandmaActivity, "claude"))
-        }
-        val customKey = EditText(this).apply {
-            hint = "Ключ своей нейросети"
-            setText(Prefs.getKey(this@GrandmaActivity, "custom"))
-        }
-        val customBase = EditText(this).apply {
-            hint = "Base URL (https://api.example.com/v1)"
-            setText(Prefs.getBaseUrl(this@GrandmaActivity))
-        }
-        val customModel = EditText(this).apply {
-            hint = "Модель (gpt-3.5-turbo)"
-            setText(Prefs.getCustomModel(this@GrandmaActivity))
-        }
-        val grandmaName = EditText(this).apply {
-            hint = "Имя бабушки (необязательно)"
-            setText(Prefs.getGrandmaName(this@GrandmaActivity))
-        }
+        providerSpinner.setSelection(initialIndex)
 
-        container.addView(TextView(this).apply { text = "Провайдер ИИ:" })
+        val geminiKey = EditText(this)
+        geminiKey.hint = "Ключ Gemini (AIza...)"
+        geminiKey.setText(Prefs.getKey(this, "gemini"))
+
+        val deepseekKey = EditText(this)
+        deepseekKey.hint = "Ключ DeepSeek (sk-...)"
+        deepseekKey.setText(Prefs.getKey(this, "deepseek"))
+
+        val claudeKey = EditText(this)
+        claudeKey.hint = "Ключ Claude (sk-ant-...)"
+        claudeKey.setText(Prefs.getKey(this, "claude"))
+
+        val customKey = EditText(this)
+        customKey.hint = "Ключ своей нейросети"
+        customKey.setText(Prefs.getKey(this, "custom"))
+
+        val customBase = EditText(this)
+        customBase.hint = "Base URL (https://api.example.com/v1)"
+        customBase.setText(Prefs.getBaseUrl(this))
+
+        val customModel = EditText(this)
+        customModel.hint = "Модель (gpt-3.5-turbo)"
+        customModel.setText(Prefs.getCustomModel(this))
+
+        val grandmaName = EditText(this)
+        grandmaName.hint = "Имя бабушки (необязательно)"
+        grandmaName.setText(Prefs.getGrandmaName(this))
+
+        val pTitle = TextView(this)
+        pTitle.text = "Провайдер ИИ:"
+        container.addView(pTitle)
         container.addView(providerSpinner)
         container.addView(space(8))
         container.addView(geminiKey)
@@ -204,17 +235,22 @@ class GrandmaActivity : AppCompatActivity() {
         container.addView(space(8))
         container.addView(grandmaName)
         container.addView(space(8))
-        container.addView(TextView(this).apply {
-            text = "Ключ Gemini можно получить бесплатно:\naistudio.google.com/apikey"
-            textSize = 12f
-            setTextColor(0xFF888888.toInt())
-        })
+
+        val urlHint = TextView(this)
+        urlHint.text = "Ключ Gemini бесплатно:\naistudio.google.com/apikey"
+        urlHint.textSize = 12f
+        urlHint.setTextColor(0xFF888888.toInt())
+        container.addView(urlHint)
+
+        val scroll = ScrollView(this)
+        scroll.addView(container)
 
         android.app.AlertDialog.Builder(this)
             .setTitle("Настройки")
-            .setView(ScrollView(this).apply { addView(container) })
+            .setView(scroll)
             .setPositiveButton("Сохранить") { _, _ ->
-                val newProvider = providers[providerSpinner.selectedItemPosition].first
+                val idx = providerSpinner.selectedItemPosition
+                val newProvider = providers[idx].first
                 Prefs.setProvider(this, newProvider)
                 Prefs.setKey(this, "gemini", geminiKey.text.toString())
                 Prefs.setKey(this, "deepseek", deepseekKey.text.toString())
@@ -233,36 +269,48 @@ class GrandmaActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun makeStatus() = TextView(this).apply {
-        textSize = 15f
-        setPadding(0, dp(10), 0, dp(4))
+    private fun makeStatus(): TextView {
+        val tv = TextView(this)
+        tv.textSize = 15f
+        tv.setPadding(0, dp(10), 0, dp(4))
+        return tv
     }
 
-    private fun makeButton(text: String, onClick: () -> Unit) = Button(this).apply {
-        this.text = text
-        textSize = 14f
-        setOnClickListener { onClick() }
+    private fun makeButton(text: String, onClick: () -> Unit): Button {
+        val b = Button(this)
+        b.text = text
+        b.textSize = 14f
+        b.setOnClickListener { onClick() }
+        return b
     }
 
-    private fun makePrimaryButton(text: String, onClick: () -> Unit) = Button(this).apply {
-        this.text = text
-        textSize = 16f
-        setPadding(0, dp(16), 0, dp(16))
-        setBackgroundColor(0xFF7C3AED.toInt())
-        setTextColor(0xFFFFFFFF.toInt())
-        setOnClickListener { onClick() }
+    private fun makePrimaryButton(text: String, onClick: () -> Unit): Button {
+        val b = Button(this)
+        b.text = text
+        b.textSize = 16f
+        b.setPadding(0, dp(16), 0, dp(16))
+        b.setBackgroundColor(0xFF7C3AED.toInt())
+        b.setTextColor(0xFFFFFFFF.toInt())
+        b.setOnClickListener { onClick() }
+        return b
     }
 
-    private fun space(h: Int) = View(this).apply {
-        layoutParams = LinearLayout.LayoutParams(
+    private fun space(h: Int): View {
+        val v = View(this)
+        v.layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, dp(h)
         )
+        return v
     }
 
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    private fun dp(v: Int): Int {
+        return (v * resources.displayMetrics.density).toInt()
+    }
 
     override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         refresh()

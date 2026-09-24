@@ -163,7 +163,7 @@ object GrandmaOfflineBrain {
         quickFact(q)?.let { return BrainResult.Answer(it) }
 
         // ===================== ПОГОДА / НОВОСТИ / ПОИСК =====================
-        if (q.contains("погод")) {
+        if (q.contains("погода")) {
             return BrainResult.NeedWebSearch("погода")
         }
         if (q.contains("новост") || q.contains("что нового в мире") ||

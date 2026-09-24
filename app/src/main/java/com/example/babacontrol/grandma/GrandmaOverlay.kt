@@ -356,10 +356,18 @@ class GrandmaOverlay : Service() {
     private fun onMicClick() {
         val v = voice
         if (v == null) return
+
+        // Если уже слушаем — останавливаем
         if (isListening) {
             v.stop()
             return
         }
+
+        // Останавливаем текущую озвучку (ассистент замолкает)
+        try {
+            tts?.stop()
+        } catch (e: Exception) {}
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
         ) {

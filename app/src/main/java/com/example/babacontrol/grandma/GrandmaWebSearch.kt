@@ -17,7 +17,6 @@ object GrandmaWebSearch {
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    // ===================== WIKIPEDIA =====================
     suspend fun wikipedia(query: String): String? = withContext(Dispatchers.IO) {
         try {
             val clean = query
@@ -50,7 +49,6 @@ object GrandmaWebSearch {
         }
     }
 
-    // ===================== ПОГОДА =====================
     suspend fun weather(context: Context): String? = withContext(Dispatchers.IO) {
         try {
             val loc = getLastLocation(context) ?: return@withContext null
@@ -143,7 +141,6 @@ object GrandmaWebSearch {
         }
     }
 
-    // ===================== НОВОСТИ =====================
     suspend fun news(): String? = withContext(Dispatchers.IO) {
         try {
             val url = "https://lenta.ru/rss/news"
@@ -182,7 +179,6 @@ object GrandmaWebSearch {
         return result
     }
 
-    // ===================== DUCKDUCKGO INSTANT =====================
     suspend fun duckDuckGo(query: String): String? = withContext(Dispatchers.IO) {
         try {
             val encoded = URLEncoder.encode(query, "UTF-8")
@@ -212,28 +208,25 @@ object GrandmaWebSearch {
         }
     }
 
-    // ===================== УНИВЕРСАЛЬНЫЙ ПОИСК =====================
     suspend fun search(context: Context, question: String): String? {
         val q = question.lowercase()
 
-        // 1. Погода?
         if (q.contains("погод")) {
             val w = weather(context)
             if (w != null) return w
+            return "Не могу узнать погоду. Включите геолокацию и проверьте интернет."
         }
 
-        // 2. Новости?
         if (q.contains("новост") || q.contains("что нового") ||
             q.contains("что случилось")) {
             val n = news()
             if (n != null) return n
+            return "Не могу получить новости. Проверьте интернет."
         }
 
-        // 3. Wikipedia
         val wiki = wikipedia(question)
         if (wiki != null) return wiki
 
-        // 4. DuckDuckGo
         val ddg = duckDuckGo(question)
         if (ddg != null) return ddg
 

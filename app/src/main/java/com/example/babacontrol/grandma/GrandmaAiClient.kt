@@ -168,19 +168,25 @@ object GrandmaAiClient {
             .post(body.toString().toRequestBody(jsonType))
             .build()
 
-        client.newCall(req).execute().use { resp ->
-            val txt = resp.body?.string() ?: ""
-            if (!resp.isSuccessful) throw IOException(humanError("Gemini", resp.code, txt))
-
-            val json = JSONObject(txt)
-            val candidates = json.optJSONArray("candidates") ?: throw IOException("Пустой ответ")
-            val first = candidates.optJSONObject(0) ?: throw IOException("Пустой ответ")
-            val content = first.optJSONObject("content") ?: throw IOException("Пустой ответ")
-            val parts = content.optJSONArray("parts") ?: throw IOException("Пустой ответ")
-            val text = parts.optJSONObject(0)?.optString("text") ?: ""
-
-            if (text.isBlank()) "Извините, не смогла ответить." else text.trim()
+        val resp = client.newCall(req).execute()
+        val txt = resp.body?.string() ?: ""
+        if (!resp.isSuccessful) {
+            resp.close()
+            throw IOException(humanError("Gemini", resp.code, txt))
         }
+        resp.close()
+
+        val json = JSONObject(txt)
+        val candidates = json.optJSONArray("candidates") ?: throw IOException("Пустой ответ")
+        val first = candidates.optJSONObject(0) ?: throw IOException("Пустой ответ")
+        val content = first.optJSONObject("content") ?: throw IOException("Пустой ответ")
+        val parts = content.optJSONArray("parts") ?: throw IOException("Пустой ответ")
+        val text = parts.optJSONObject(0)?.optString("text") ?: ""
+
+        if (text.isBlank()) {
+            return "Извините, не смогла ответить."
+        }
+        return text.trim()
     }
 
     private fun callOpenAiCompat(
@@ -230,18 +236,24 @@ object GrandmaAiClient {
             .post(body.toString().toRequestBody(jsonType))
             .build()
 
-        client.newCall(req).execute().use { resp ->
-            val txt = resp.body?.string() ?: ""
-            if (!resp.isSuccessful) throw IOException(humanError(providerName, resp.code, txt))
-
-            val json = JSONObject(txt)
-            val choices = json.optJSONArray("choices") ?: throw IOException("Пустой ответ")
-            val first = choices.optJSONObject(0) ?: throw IOException("Пустой ответ")
-            val msg = first.optJSONObject("message") ?: throw IOException("Пустой ответ")
-            val text = msg.optString("content")
-
-            if (text.isBlank()) "Извините, не смогла ответить." else text.trim()
+        val resp = client.newCall(req).execute()
+        val txt = resp.body?.string() ?: ""
+        if (!resp.isSuccessful) {
+            resp.close()
+            throw IOException(humanError(providerName, resp.code, txt))
         }
+        resp.close()
+
+        val json = JSONObject(txt)
+        val choices = json.optJSONArray("choices") ?: throw IOException("Пустой ответ")
+        val first = choices.optJSONObject(0) ?: throw IOException("Пустой ответ")
+        val msg = first.optJSONObject("message") ?: throw IOException("Пустой ответ")
+        val text = msg.optString("content")
+
+        if (text.isBlank()) {
+            return "Извините, не смогла ответить."
+        }
+        return text.trim()
     }
 
     private fun callClaude(
@@ -283,24 +295,30 @@ object GrandmaAiClient {
             .post(body.toString().toRequestBody(jsonType))
             .build()
 
-        client.newCall(req).execute().use { resp ->
-            val txt = resp.body?.string() ?: ""
-            if (!resp.isSuccessful) throw IOException(humanError("Claude", resp.code, txt))
-
-            val json = JSONObject(txt)
-            val content = json.optJSONArray("content") ?: throw IOException("Пустой ответ")
-
-            val sb = StringBuilder()
-            for (i in 0 until content.length()) {
-                val block = content.optJSONObject(i) ?: continue
-                if (block.optString("type") == "text") {
-                    sb.append(block.optString("text"))
-                }
-            }
-
-            val result = sb.toString().trim()
-            if (result.isBlank()) "Извините, не смогла ответить." else result
+        val resp = client.newCall(req).execute()
+        val txt = resp.body?.string() ?: ""
+        if (!resp.isSuccessful) {
+            resp.close()
+            throw IOException(humanError("Claude", resp.code, txt))
         }
+        resp.close()
+
+        val json = JSONObject(txt)
+        val content = json.optJSONArray("content") ?: throw IOException("Пустой ответ")
+
+        val sb = StringBuilder()
+        for (i in 0 until content.length()) {
+            val block = content.optJSONObject(i) ?: continue
+            if (block.optString("type") == "text") {
+                sb.append(block.optString("text"))
+            }
+        }
+
+        val result = sb.toString().trim()
+        if (result.isBlank()) {
+            return "Извините, не смогла ответить."
+        }
+        return result
     }
 
     private fun offlineAnswer(userText: String): String {

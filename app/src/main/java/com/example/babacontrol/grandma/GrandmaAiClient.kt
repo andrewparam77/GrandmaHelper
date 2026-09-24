@@ -38,48 +38,25 @@ object GrandmaAiClient {
         maxTokens: Int = 900
     ): String = withContext(Dispatchers.IO) {
 
-        // 1. Офлайн-мозг (команды, время, звонки и т.д.)
+        // ШАГ 1. Офлайн-мозг
         when (val brain = GrandmaOfflineBrain.think(context, userText)) {
-            is BrainResult.Answer -> return@withContext brain.text
-
+            is BrainResult.Answer -> {
+                return@withContext brain.text
+            }
             is BrainResult.NeedWebSearch -> {
-                // 2. Веб-поиск через бесплатные API
                 val web = GrandmaWebSearch.search(context, brain.query)
                 if (web != null) return@withContext web
-
-                // 3. Если веб не помог и есть LLM-ключ — используем LLM
-                val online = GrandmaNetworkUtil.isOnline(context)
-                if (online && config.provider != "none" && config.apiKey.isNotBlank()) {
-                    try {
-                        return@withContext callLlm(context, config, systemPrompt, history, userText, maxTokens)
-                    } catch (e: Exception) {
-                        return@withContext "Не смогла найти ответ. Проверьте интернет."
-                    }
-                }
-                return@withContext "Не смогла найти ответ. Проверьте интернет."
+                return@withContext tryLlm(context, config, systemPrompt, history, userText, maxTokens)
             }
-
             BrainResult.Unknown -> {
-                // Не поняли — пробуем LLM
-                val online = GrandmaNetworkUtil.isOnline(context)
-                if (online && config.provider != "none" && config.apiKey.isNotBlank()) {
-                    try {
-                        return@withContext callLlm(context, config, systemPrompt, history, userText, maxTokens)
-                    } catch (e: Exception) {
-                        return@withContext fallbackUnknown()
-                    }
-                }
-                return@withContext fallbackUnknown()
+                val web = GrandmaWebSearch.search(context, userText)
+                if (web != null) return@withContext web
+                return@withContext tryLlm(context, config, systemPrompt, history, userText, maxTokens)
             }
         }
     }
 
-    private fun fallbackUnknown(): String {
-        return "Извините, я не поняла вопрос. Спросите, пожалуйста, по-другому " +
-                "или скажите «что ты умеешь» — я расскажу."
-    }
-
-    private suspend fun callLlm(
+    private suspend fun tryLlm(
         context: Context,
         config: GrandmaAiConfig,
         systemPrompt: String,
@@ -87,30 +64,40 @@ object GrandmaAiClient {
         userText: String,
         maxTokens: Int
     ): String {
-        return when (config.provider) {
-            "gemini" -> callGemini(config.apiKey, systemPrompt, history, userText, maxTokens)
-            "deepseek" -> callOpenAiCompat(
-                "https://api.deepseek.com/v1",
-                config.apiKey,
-                config.model.ifBlank { "deepseek-chat" },
-                systemPrompt, history, userText, maxTokens, "DeepSeek"
-            )
-            "claude" -> callClaude(config, systemPrompt, history, userText, maxTokens)
-            "custom" -> {
-                val base = config.baseUrl.trim().trimEnd('/')
-                if (base.isBlank()) throw IOException("Укажите адрес сервера")
-                callOpenAiCompat(
-                    base,
+        val online = GrandmaNetworkUtil.isOnline(context)
+        if (!online) {
+            return "Сейчас нет интернета, попробуйте позже."
+        }
+        if (config.provider == "none" || config.apiKey.isBlank()) {
+            return "Извините, я не смогла найти ответ. Попробуйте спросить по-другому."
+        }
+        return try {
+            when (config.provider) {
+                "gemini" -> callGemini(config.apiKey, systemPrompt, history, userText, maxTokens)
+                "deepseek" -> callOpenAiCompat(
+                    "https://api.deepseek.com/v1",
                     config.apiKey,
-                    config.model.ifBlank { "gpt-3.5-turbo" },
-                    systemPrompt, history, userText, maxTokens, "Своя нейросеть"
+                    config.model.ifBlank { "deepseek-chat" },
+                    systemPrompt, history, userText, maxTokens, "DeepSeek"
                 )
+                "claude" -> callClaude(config, systemPrompt, history, userText, maxTokens)
+                "custom" -> {
+                    val base = config.baseUrl.trim().trimEnd('/')
+                    if (base.isBlank()) throw IOException("Укажите адрес сервера")
+                    callOpenAiCompat(
+                        base,
+                        config.apiKey,
+                        config.model.ifBlank { "gpt-3.5-turbo" },
+                        systemPrompt, history, userText, maxTokens, "Своя нейросеть"
+                    )
+                }
+                else -> "Извините, я не смогла найти ответ."
             }
-            else -> fallbackUnknown()
+        } catch (e: Exception) {
+            "Извините, я не смогла найти ответ. Попробуйте позже."
         }
     }
 
-    // ==================== GEMINI ====================
     private fun callGemini(
         apiKey: String, systemPrompt: String,
         history: List<GrandmaMsg>, userText: String, maxTokens: Int
@@ -156,7 +143,6 @@ object GrandmaAiClient {
         return if (text.isBlank()) "Извините, не смогла ответить." else text.trim()
     }
 
-    // ==================== OpenAI-совместимые ====================
     private fun callOpenAiCompat(
         baseUrl: String, apiKey: String, model: String,
         systemPrompt: String, history: List<GrandmaMsg>, userText: String,
@@ -200,7 +186,6 @@ object GrandmaAiClient {
         return if (text.isBlank()) "Извините, не смогла ответить." else text.trim()
     }
 
-    // ==================== Claude ====================
     private fun callClaude(
         config: GrandmaAiConfig, systemPrompt: String,
         history: List<GrandmaMsg>, userText: String, maxTokens: Int
